@@ -1,0 +1,9 @@
+[package]
+name = "evremap"
+version = "0.1.0"
+authors = ["Wez Furlong"]
+edition = "2018"
+
+[dependencies]
+evdev-rs = "0.3"
+anyhow = "1.0"
