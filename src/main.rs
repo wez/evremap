@@ -2,7 +2,7 @@ use anyhow::*;
 use evdev::enums::{EventCode, EV_KEY as KeyCode};
 use evdev::{Device, GrabMode, InputEvent, ReadFlag, TimeVal, UInputDevice};
 use evdev_rs as evdev;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::time::Duration;
 
@@ -72,6 +72,8 @@ struct InputMapper {
 
     /// The most recent candidate for a tap function is held here
     tapping: Option<KeyCode>,
+
+    output_keys: HashSet<KeyCode>,
 }
 
 impl InputMapper {
@@ -95,6 +97,7 @@ impl InputMapper {
             input,
             output,
             input_state: HashMap::new(),
+            output_keys: HashSet::new(),
             tapping: None,
             mappings,
         })
@@ -151,7 +154,7 @@ impl InputMapper {
             KeyEventType::Release => {
                 let pressed_at = match self.input_state.remove(&code) {
                     None => {
-                        self.sync_event(event)?;
+                        self.write_event_and_sync(event)?;
                         return Ok(());
                     }
                     Some(p) => p,
@@ -178,7 +181,7 @@ impl InputMapper {
                     }
                     None => {
                         // Just pass it through
-                        self.sync_event(event)?;
+                        self.write_event_and_sync(event)?;
                     }
                 }
             }
@@ -196,15 +199,27 @@ impl InputMapper {
                     None => {
                         // Just pass it through
                         self.cancel_pending_tap();
-                        self.sync_event(event)?;
+                        self.write_event_and_sync(event)?;
                     }
                 }
             }
             KeyEventType::Repeat => {
-                self.sync_event(event)?;
+                match self.lookup_mapping(code.clone()) {
+                    Some(Mapping::DualRole { hold, .. }) => {
+                        self.emit_keys(&hold, &event.time, KeyEventType::Repeat)?;
+                    }
+                    Some(Mapping::Remap { .. }) => {
+                        unreachable!();
+                    }
+                    None => {
+                        // Just pass it through
+                        self.cancel_pending_tap();
+                        self.write_event_and_sync(event)?;
+                    }
+                }
             }
             KeyEventType::Unknown(_) => {
-                self.sync_event(event)?;
+                self.write_event_and_sync(event)?;
             }
         }
 
@@ -215,31 +230,54 @@ impl InputMapper {
         self.tapping.take();
     }
 
-    fn emit_keys(&self, key: &[KeyCode], time: &TimeVal, event_type: KeyEventType) -> Result<()> {
+    fn emit_keys(
+        &mut self,
+        key: &[KeyCode],
+        time: &TimeVal,
+        event_type: KeyEventType,
+    ) -> Result<()> {
         for k in key {
             let event = make_event(k.clone(), time, event_type);
             log::trace!("OUT: {:?}", event);
-            self.output.write_event(&event)?;
+            self.write_event(&event)?;
         }
-        self.output.write_event(&InputEvent::new(
-            time,
-            &EventCode::EV_SYN(evdev_rs::enums::EV_SYN::SYN_REPORT),
-            0,
-        ))?;
+        self.generate_sync_event(time)?;
         Ok(())
     }
 
-    fn emit_key(&self, key: KeyCode, time: &TimeVal, event_type: KeyEventType) -> Result<()> {
+    fn emit_key(&mut self, key: KeyCode, time: &TimeVal, event_type: KeyEventType) -> Result<()> {
         let event = make_event(key, time, event_type);
-        self.sync_event(&event)?;
+        self.write_event_and_sync(&event)?;
         Ok(())
     }
 
-    fn sync_event(&self, event: &InputEvent) -> Result<()> {
+    fn write_event_and_sync(&mut self, event: &InputEvent) -> Result<()> {
+        self.write_event(event)?;
+        self.generate_sync_event(&event.time)?;
+        Ok(())
+    }
+
+    fn write_event(&mut self, event: &InputEvent) -> Result<()> {
         log::trace!("OUT: {:?}", event);
         self.output.write_event(&event)?;
+        if let EventCode::EV_KEY(ref key) = event.event_code {
+            let event_type = KeyEventType::from_value(event.value);
+            match event_type {
+                KeyEventType::Press | KeyEventType::Repeat => {
+                    self.output_keys.insert(key.clone());
+                }
+                KeyEventType::Release => {
+                    self.output_keys.remove(key);
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
+    fn generate_sync_event(&self, time: &TimeVal) -> Result<()> {
         self.output.write_event(&InputEvent::new(
-            &event.time,
+            time,
             &EventCode::EV_SYN(evdev_rs::enums::EV_SYN::SYN_REPORT),
             0,
         ))?;
