@@ -1,0 +1,23 @@
+device_name = "AT Translated Set 2 keyboard"
+
+[[dual_role]]
+input = "KEY_CAPSLOCK"
+hold = ["KEY_LEFTCTRL"]
+tap = ["KEY_ESC"]
+
+[[remap]]
+input = ["KEY_F1"]
+output = ["KEY_BACK"]
+
+[[remap]]
+input = ["KEY_F5"]
+output = ["KEY_BRIGHTNESSDOWN"]
+
+[[remap]]
+input = ["KEY_F6"]
+output = ["KEY_BRIGHTNESSUP"]
+
+[[remap]]
+input = ["KEY_F8"]
+output = ["KEY_MUTE"]
+

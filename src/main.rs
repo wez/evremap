@@ -1,6 +1,7 @@
 use crate::mapping::*;
 use crate::remapper::*;
 use anyhow::*;
+use std::path::PathBuf;
 use std::time::Duration;
 use structopt::StructOpt;
 
@@ -20,6 +21,10 @@ struct Opt {
     /// configuration
     #[structopt(name = "list-devices", long)]
     list_devices: bool,
+
+    /// Specify the configuration file to be loaded
+    #[structopt(name = "config-file", long)]
+    config_file: PathBuf,
 }
 
 fn main() -> Result<()> {
@@ -30,36 +35,17 @@ fn main() -> Result<()> {
         return deviceinfo::list_devices();
     }
 
-    let mappings = vec![
-        Mapping::DualRole {
-            input: KeyCode::KEY_CAPSLOCK,
-            hold: vec![KeyCode::KEY_LEFTCTRL],
-            tap: vec![KeyCode::KEY_ESC],
-        },
-        Mapping::Remap {
-            input: [KeyCode::KEY_F1].into_iter().cloned().collect(),
-            output: [KeyCode::KEY_BACK].into_iter().cloned().collect(),
-        },
-        Mapping::Remap {
-            input: [KeyCode::KEY_F8].into_iter().cloned().collect(),
-            output: [KeyCode::KEY_MUTE].into_iter().cloned().collect(),
-        },
-        Mapping::Remap {
-            input: [KeyCode::KEY_F5].into_iter().cloned().collect(),
-            output: [KeyCode::KEY_BRIGHTNESSDOWN].into_iter().cloned().collect(),
-        },
-        Mapping::Remap {
-            input: [KeyCode::KEY_F6].into_iter().cloned().collect(),
-            output: [KeyCode::KEY_BRIGHTNESSUP].into_iter().cloned().collect(),
-        },
-    ];
+    let mapping_config = MappingConfig::from_file(&opt.config_file).context(format!(
+        "loading --config-file={}",
+        opt.config_file.display()
+    ))?;
 
     log::error!("Short delay: release any keys now!");
     std::thread::sleep(Duration::new(2, 0));
 
-    let device_info = deviceinfo::DeviceInfo::with_name("AT Translated Set 2 keyboard")?;
+    let device_info = deviceinfo::DeviceInfo::with_name(&mapping_config.device_name)?;
 
-    let mut mapper = InputMapper::create_mapper(device_info.path, mappings)?;
+    let mut mapper = InputMapper::create_mapper(device_info.path, mapping_config.mappings)?;
     mapper.run_mapper()?;
     Ok(())
 }
