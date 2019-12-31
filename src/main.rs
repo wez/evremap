@@ -14,8 +14,8 @@ enum Mapping {
         tap: Vec<KeyCode>,
     },
     Remap {
-        input: Vec<KeyCode>,
-        output: Vec<KeyCode>,
+        input: HashSet<KeyCode>,
+        output: HashSet<KeyCode>,
     },
 }
 
@@ -76,6 +76,13 @@ struct InputMapper {
     output_keys: HashSet<KeyCode>,
 }
 
+fn enable_key_code(input: &mut Device, key: KeyCode) -> Result<()> {
+    input
+        .enable(&EventCode::EV_KEY(key.clone()))
+        .context(format!("enable key {:?}", key))?;
+    Ok(())
+}
+
 impl InputMapper {
     pub fn create_mapper<P: AsRef<Path>>(path: P, mappings: Vec<Mapping>) -> Result<Self> {
         let path = path.as_ref();
@@ -86,6 +93,26 @@ impl InputMapper {
             .context(format!("assigning fd for {} to Device", path.display()))?;
 
         input.set_name(&format!("evremap Virtual input for {}", path.display()));
+
+        // Ensure that any remapped keys are supported by the generated output device
+        for map in &mappings {
+            match map {
+                Mapping::DualRole { tap, hold, .. } => {
+                    for t in tap {
+                        enable_key_code(&mut input, t.clone())?;
+                    }
+                    for h in hold {
+                        enable_key_code(&mut input, h.clone())?;
+                    }
+                }
+                Mapping::Remap { output, .. } => {
+                    for o in output {
+                        enable_key_code(&mut input, o.clone())?;
+                    }
+                }
+            }
+        }
+
         let output = UInputDevice::create_from_device(&input)
             .context(format!("creating UInputDevice from {}", path.display()))?;
 
@@ -101,6 +128,76 @@ impl InputMapper {
             tapping: None,
             mappings,
         })
+    }
+
+    /// Compute the effective set of keys that are pressed
+    fn compute_keys(&self) -> HashSet<KeyCode> {
+        // Start with the input keys
+        let mut keys: HashSet<KeyCode> = self.input_state.keys().cloned().collect();
+
+        // First phase is to apply any DualRole mappings as they are likely to
+        // be used to produce modifiers when held.
+        for map in &self.mappings {
+            if let Mapping::DualRole { input, hold, .. } = map {
+                if keys.contains(input) {
+                    keys.remove(input);
+                    for h in hold {
+                        keys.insert(h.clone());
+                    }
+                }
+            }
+        }
+
+        // Second pass to apply Remap items
+        for map in &self.mappings {
+            if let Mapping::Remap { input, output } = map {
+                if input.is_subset(&keys) {
+                    for i in input {
+                        keys.remove(i);
+                    }
+                    for o in output {
+                        keys.insert(o.clone());
+                    }
+                }
+            }
+        }
+
+        keys
+    }
+
+    fn compute_and_apply_keys(&mut self, time: &TimeVal) -> Result<()> {
+        let desired_keys = self.compute_keys();
+        let to_release: Vec<KeyCode> = self
+            .output_keys
+            .difference(&desired_keys)
+            .cloned()
+            .collect();
+
+        let to_press: Vec<KeyCode> = desired_keys
+            .difference(&self.output_keys)
+            .cloned()
+            .collect();
+
+        if !to_release.is_empty() {
+            self.emit_keys(&to_release, time, KeyEventType::Release)?;
+        }
+        if !to_press.is_empty() {
+            self.emit_keys(&to_press, time, KeyEventType::Press)?;
+        }
+        Ok(())
+    }
+
+    fn lookup_dual_role_mapping(&self, code: KeyCode) -> Option<Mapping> {
+        for map in &self.mappings {
+            if let Mapping::DualRole { input, .. } = map {
+                if *input == code {
+                    // A DualRole mapping has the highest precedence
+                    // so we've found our match
+                    return Some(map.clone());
+                }
+            }
+        }
+        None
     }
 
     fn lookup_mapping(&self, code: KeyCode) -> Option<Mapping> {
@@ -160,28 +257,19 @@ impl InputMapper {
                     Some(p) => p,
                 };
 
-                match self.lookup_mapping(code.clone()) {
-                    Some(Mapping::DualRole { hold, tap, .. }) => {
-                        // If released quickly enough, becomes a tap press.
-                        // Regardless: release the hold keys
-                        self.emit_keys(&hold, &event.time, KeyEventType::Release)?;
+                self.compute_and_apply_keys(&event.time)?;
 
-                        if let Some(tapping) = self.tapping.take() {
-                            if tapping == code
-                                && timeval_diff(&event.time, &pressed_at)
-                                    <= Duration::from_millis(200)
-                            {
-                                self.emit_keys(&tap, &event.time, KeyEventType::Press)?;
-                                self.emit_keys(&tap, &event.time, KeyEventType::Release)?;
-                            }
+                if let Some(Mapping::DualRole { tap, .. }) =
+                    self.lookup_dual_role_mapping(code.clone())
+                {
+                    // If released quickly enough, becomes a tap press.
+                    if let Some(tapping) = self.tapping.take() {
+                        if tapping == code
+                            && timeval_diff(&event.time, &pressed_at) <= Duration::from_millis(200)
+                        {
+                            self.emit_keys(&tap, &event.time, KeyEventType::Press)?;
+                            self.emit_keys(&tap, &event.time, KeyEventType::Release)?;
                         }
-                    }
-                    Some(Mapping::Remap { .. }) => {
-                        unreachable!();
-                    }
-                    None => {
-                        // Just pass it through
-                        self.write_event_and_sync(event)?;
                     }
                 }
             }
@@ -189,17 +277,14 @@ impl InputMapper {
                 self.input_state.insert(code.clone(), event.time.clone());
 
                 match self.lookup_mapping(code.clone()) {
-                    Some(Mapping::DualRole { hold, .. }) => {
-                        self.emit_keys(&hold, &event.time, KeyEventType::Press)?;
+                    Some(_) => {
+                        self.compute_and_apply_keys(&event.time)?;
                         self.tapping.replace(code);
-                    }
-                    Some(Mapping::Remap { .. }) => {
-                        unreachable!();
                     }
                     None => {
                         // Just pass it through
                         self.cancel_pending_tap();
-                        self.write_event_and_sync(event)?;
+                        self.compute_and_apply_keys(&event.time)?;
                     }
                 }
             }
@@ -208,8 +293,9 @@ impl InputMapper {
                     Some(Mapping::DualRole { hold, .. }) => {
                         self.emit_keys(&hold, &event.time, KeyEventType::Repeat)?;
                     }
-                    Some(Mapping::Remap { .. }) => {
-                        unreachable!();
+                    Some(Mapping::Remap { output, .. }) => {
+                        let output: Vec<KeyCode> = output.iter().cloned().collect();
+                        self.emit_keys(&output, &event.time, KeyEventType::Repeat)?;
                     }
                     None => {
                         // Just pass it through
@@ -238,16 +324,9 @@ impl InputMapper {
     ) -> Result<()> {
         for k in key {
             let event = make_event(k.clone(), time, event_type);
-            log::trace!("OUT: {:?}", event);
             self.write_event(&event)?;
         }
         self.generate_sync_event(time)?;
-        Ok(())
-    }
-
-    fn emit_key(&mut self, key: KeyCode, time: &TimeVal, event_type: KeyEventType) -> Result<()> {
-        let event = make_event(key, time, event_type);
-        self.write_event_and_sync(&event)?;
         Ok(())
     }
 
@@ -292,11 +371,29 @@ fn make_event(key: KeyCode, time: &TimeVal, event_type: KeyEventType) -> InputEv
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let mappings = vec![Mapping::DualRole {
-        input: KeyCode::KEY_CAPSLOCK,
-        hold: vec![KeyCode::KEY_LEFTCTRL],
-        tap: vec![KeyCode::KEY_ESC],
-    }];
+    let mappings = vec![
+        Mapping::DualRole {
+            input: KeyCode::KEY_CAPSLOCK,
+            hold: vec![KeyCode::KEY_LEFTCTRL],
+            tap: vec![KeyCode::KEY_ESC],
+        },
+        Mapping::Remap {
+            input: [KeyCode::KEY_F1].into_iter().cloned().collect(),
+            output: [KeyCode::KEY_BACK].into_iter().cloned().collect(),
+        },
+        Mapping::Remap {
+            input: [KeyCode::KEY_F8].into_iter().cloned().collect(),
+            output: [KeyCode::KEY_MUTE].into_iter().cloned().collect(),
+        },
+        Mapping::Remap {
+            input: [KeyCode::KEY_F5].into_iter().cloned().collect(),
+            output: [KeyCode::KEY_BRIGHTNESSDOWN].into_iter().cloned().collect(),
+        },
+        Mapping::Remap {
+            input: [KeyCode::KEY_F6].into_iter().cloned().collect(),
+            output: [KeyCode::KEY_BRIGHTNESSUP].into_iter().cloned().collect(),
+        },
+    ];
 
     log::error!("Short delay: release any keys now!");
     std::thread::sleep(Duration::new(2, 0));
