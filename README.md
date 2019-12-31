@@ -16,6 +16,9 @@ a model of the keys that are pressed.  It then applies your remapping configurat
 to produce the effective set of pressed keys and emits appropriate changes to a virtual
 output device.
 
+Because `evremap` targets the evdev layer of libinput, its remapping
+is effective system-wide: in Wayland, X11 and the linux console.
+
 ## Configuration
 
 Here's an example configuration that makes capslock useful:
