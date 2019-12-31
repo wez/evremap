@@ -1,6 +1,7 @@
 use crate::mapping::*;
 use anyhow::*;
 use evdev_rs::{Device, GrabMode, InputEvent, ReadFlag, TimeVal, UInputDevice};
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::time::Duration;
@@ -172,23 +173,37 @@ impl InputMapper {
         keys
     }
 
+    /// Compute the difference between our desired set of keys
+    /// and the set of keys that are currently pressed in the
+    /// output device.
+    /// Release any keys that should not be pressed, and then
+    /// press any keys that should be pressed.
+    ///
+    /// When releasing, release modifiers last so that mappings
+    /// that produce eg: CTRL-C don't emit a random C character
+    /// when released.
+    ///
+    /// Similarly, when pressing, emit modifiers first so that
+    /// we don't emit C and then CTRL for such a mapping.
     fn compute_and_apply_keys(&mut self, time: &TimeVal) -> Result<()> {
         let desired_keys = self.compute_keys();
-        let to_release: Vec<KeyCode> = self
+        let mut to_release: Vec<KeyCode> = self
             .output_keys
             .difference(&desired_keys)
             .cloned()
             .collect();
 
-        let to_press: Vec<KeyCode> = desired_keys
+        let mut to_press: Vec<KeyCode> = desired_keys
             .difference(&self.output_keys)
             .cloned()
             .collect();
 
         if !to_release.is_empty() {
+            to_release.sort_by(modifiers_last);
             self.emit_keys(&to_release, time, KeyEventType::Release)?;
         }
         if !to_press.is_empty() {
+            to_press.sort_by(modifiers_first);
             self.emit_keys(&to_press, time, KeyEventType::Press)?;
         }
         Ok(())
@@ -373,4 +388,41 @@ impl InputMapper {
 
 fn make_event(key: KeyCode, time: &TimeVal, event_type: KeyEventType) -> InputEvent {
     InputEvent::new(time, &EventCode::EV_KEY(key), event_type.value())
+}
+
+fn is_modifier(key: &KeyCode) -> bool {
+    match key {
+        KeyCode::KEY_FN
+        | KeyCode::KEY_LEFTALT
+        | KeyCode::KEY_RIGHTALT
+        | KeyCode::KEY_LEFTMETA
+        | KeyCode::KEY_RIGHTMETA
+        | KeyCode::KEY_LEFTCTRL
+        | KeyCode::KEY_RIGHTCTRL
+        | KeyCode::KEY_LEFTSHIFT
+        | KeyCode::KEY_RIGHTSHIFT => true,
+        _ => false,
+    }
+}
+
+/// Orders modifier keys ahead of non-modifier keys.
+/// Unfortunately the underlying type doesn't allow direct
+/// comparison, but that's ok for our purposes.
+fn modifiers_first(a: &KeyCode, b: &KeyCode) -> Ordering {
+    if is_modifier(a) {
+        if is_modifier(b) {
+            Ordering::Equal
+        } else {
+            Ordering::Less
+        }
+    } else if is_modifier(b) {
+        Ordering::Greater
+    } else {
+        // Neither are modifiers
+        Ordering::Equal
+    }
+}
+
+fn modifiers_last(a: &KeyCode, b: &KeyCode) -> Ordering {
+    modifiers_first(a, b).reverse()
 }
