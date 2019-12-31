@@ -21,6 +21,9 @@ enum Opt {
     /// configuration
     ListDevices,
 
+    /// Show a list of possible KEY_XXX values
+    ListKeys,
+
     /// Load a remapper config and run the remapper.
     /// This usually requires running as root to obtain exclusive access
     /// to the input devices.
@@ -31,12 +34,28 @@ enum Opt {
     },
 }
 
+pub fn list_keys() -> Result<()> {
+    let mut keys: Vec<String> = EventCode::EV_KEY(KeyCode::KEY_RESERVED)
+        .iter()
+        .filter_map(|code| match code {
+            EventCode::EV_KEY(_) => Some(format!("{}", code)),
+            _ => None,
+        })
+        .collect();
+    keys.sort();
+    for key in keys {
+        println!("{}", key);
+    }
+    Ok(())
+}
+
 fn main() -> Result<()> {
     pretty_env_logger::init();
     let opt = Opt::from_args();
 
     match opt {
-        Opt::ListDevices => return deviceinfo::list_devices(),
+        Opt::ListDevices => deviceinfo::list_devices(),
+        Opt::ListKeys => list_keys(),
         Opt::Remap { config_file } => {
             let mapping_config = MappingConfig::from_file(&config_file).context(format!(
                 "loading MappingConfig from {}",
@@ -49,8 +68,7 @@ fn main() -> Result<()> {
             let device_info = deviceinfo::DeviceInfo::with_name(&mapping_config.device_name)?;
 
             let mut mapper = InputMapper::create_mapper(device_info.path, mapping_config.mappings)?;
-            mapper.run_mapper()?;
-            Ok(())
+            mapper.run_mapper()
         }
     }
 }

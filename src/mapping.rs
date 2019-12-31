@@ -59,7 +59,7 @@ impl Into<KeyCode> for KeyCodeWrapper {
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("Invalid key `{0}`")]
+    #[error("Invalid key `{0}`.  Use `evremap list-keys` to see possible keys.")]
     InvalidKey(String),
     #[error("Impossible: parsed KEY_XXX but not into an EV_KEY")]
     ImpossibleParseKey,
