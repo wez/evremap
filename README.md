@@ -82,6 +82,12 @@ input = ["KEY_F8"]
 output = ["KEY_MUTE"]
 ```
 
+* How do I list available input devices?
+  `sudo evremap list-devices`
+
+* How do I list available key codes?
+  `evremap list-keys`
+
 ## Building it
 
 ```
@@ -104,6 +110,12 @@ your system and then install and enable it:
 
 ```
 $ sudo cp evremap.service /usr/lib/systemd/system/
+$ sudo systemctl daemon-reload
 $ sudo systemctl enable evremap.service
 $ sudo systemctl start evremap.service
 ```
+
+## How do I make this execute a command when a key is pressed?
+
+Since the remapper runs as root, it seems like a dangerous idea to have it
+directly trigger commands, so that feature is not implemented.
