@@ -154,7 +154,7 @@ impl InputPair {
     }
 
     fn sync_event(&self, event: &InputEvent) -> Result<()> {
-        println!("OUT: {:?}", event);
+        log::trace!("OUT: {:?}", event);
         self.output.write_event(&event)?;
         self.output.write_event(&InputEvent::new(
             &event.time,
@@ -170,14 +170,16 @@ fn make_event(key: KeyCode, time: &TimeVal, event_type: KeyEventType) -> InputEv
 }
 
 fn main() -> Result<()> {
-    println!("Short delay: release any keys now!");
+    pretty_env_logger::init();
+
+    log::error!("Short delay: release any keys now!");
     std::thread::sleep(Duration::new(2, 0));
 
     let path = "/dev/input/event2";
 
     let mut pair = InputPair::create_mapper(path)?;
 
-    println!("Going into read loop");
+    log::error!("Going into read loop");
     loop {
         let (status, event) = pair
             .input
@@ -185,10 +187,10 @@ fn main() -> Result<()> {
         match status {
             evdev::ReadStatus::Success => {
                 if let EventCode::EV_KEY(ref key) = event.event_code {
-                    println!("IN {:?}", event);
+                    log::trace!("IN {:?}", event);
                     pair.update_with_event(&event, key.clone())?;
                 } else {
-                    println!("PASSTHRU {:?}", event);
+                    log::trace!("PASSTHRU {:?}", event);
                     pair.output.write_event(&event)?;
                 }
             }
