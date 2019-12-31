@@ -6,18 +6,111 @@ hold = ["KEY_LEFTCTRL"]
 tap = ["KEY_ESC"]
 
 [[remap]]
+input = ["KEY_LEFTALT", "KEY_F1"]
+output = ["KEY_F1"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_F2"]
+output = ["KEY_F2"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_F3"]
+output = ["KEY_F3"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_F4"]
+output = ["KEY_F4"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_F5"]
+output = ["KEY_F5"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_F6"]
+output = ["KEY_F6"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_F7"]
+output = ["KEY_F7"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_F8"]
+output = ["KEY_F8"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_F9"]
+output = ["KEY_F9"]
+
+[[remap]]
 input = ["KEY_F1"]
 output = ["KEY_BACK"]
+
+[[remap]]
+input = ["KEY_F2"]
+output = ["KEY_REFRESH"]
+
+[[remap]]
+input = ["KEY_F3"]
+# Copy!
+output = ["KEY_LEFTCTRL", "KEY_C"]
+
+[[remap]]
+input = ["KEY_F4"]
+# Paste!
+output = ["KEY_LEFTSHIFT", "KEY_INSERT"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_F5"]
+output = ["KEY_KBDILLUMDOWN"]
+
+[[remap]]
+input = ["KEY_RIGHTALT", "KEY_F5"]
+output = ["KEY_KBDILLUMDOWN"]
 
 [[remap]]
 input = ["KEY_F5"]
 output = ["KEY_BRIGHTNESSDOWN"]
 
 [[remap]]
+input = ["KEY_LEFTALT", "KEY_F6"]
+output = ["KEY_KBDILLUMUP"]
+
+[[remap]]
+input = ["KEY_RIGHTALT", "KEY_F6"]
+output = ["KEY_KBDILLUMUP"]
+
+[[remap]]
 input = ["KEY_F6"]
 output = ["KEY_BRIGHTNESSUP"]
+
+[[remap]]
+input = ["KEY_F7"]
+output = ["KEY_PLAYPAUSE"]
 
 [[remap]]
 input = ["KEY_F8"]
 output = ["KEY_MUTE"]
 
+[[remap]]
+input = ["KEY_F9"]
+output = ["KEY_VOLUMEDOWN"]
+
+[[remap]]
+input = ["KEY_F10"]
+output = ["KEY_VOLUMEUP"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_UP"]
+output = ["KEY_PAGEUP"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_DOWN"]
+output = ["KEY_PAGEDOWN"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_LEFT"]
+output = ["KEY_HOME"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_RIGHT"]
+output = ["KEY_END"]
