@@ -1,10 +1,15 @@
+# This config file is the one that @wez uses on a PixelBook Go
+
 device_name = "AT Translated Set 2 keyboard"
 
+# Hold capslock for ctrl, tap for esc
 [[dual_role]]
 input = "KEY_CAPSLOCK"
 hold = ["KEY_LEFTCTRL"]
 tap = ["KEY_ESC"]
 
+# Function keys are remapped to alternate functions by
+# default, so arrange for ALT-FX to produce FX instead.
 [[remap]]
 input = ["KEY_LEFTALT", "KEY_F1"]
 output = ["KEY_F1"]
