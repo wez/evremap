@@ -1,11 +1,12 @@
 use anyhow::*;
-use evdev::enums::{EventCode, EV_KEY as KeyCode};
-use evdev::{Device, GrabMode, InputEvent, ReadFlag, TimeVal, UInputDevice};
-use evdev_rs as evdev;
+use evdev_rs::enums::{EventCode, EV_KEY as KeyCode};
+use evdev_rs::{Device, GrabMode, InputEvent, ReadFlag, TimeVal, UInputDevice};
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
 use structopt::StructOpt;
+
+mod deviceinfo;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -383,80 +384,12 @@ fn make_event(key: KeyCode, time: &TimeVal, event_type: KeyEventType) -> InputEv
     InputEvent::new(time, &EventCode::EV_KEY(key), event_type.value())
 }
 
-struct DeviceInfo {
-    name: String,
-    path: PathBuf,
-}
-
-impl DeviceInfo {
-    pub fn with_path(path: PathBuf) -> Result<Self> {
-        let f = std::fs::File::open(&path).context(format!("opening {}", path.display()))?;
-        let mut input = Device::new().ok_or_else(|| anyhow!("failed to make new Device"))?;
-        input
-            .set_fd(f)
-            .context(format!("assigning fd for {} to Device", path.display()))?;
-
-        Ok(Self {
-            name: input.name().unwrap_or("").to_string(),
-            path,
-        })
-    }
-
-    pub fn with_name(name: &str) -> Result<Self> {
-        let devices = Self::obtain_device_list()?;
-        for item in devices {
-            if item.name == name {
-                return Ok(item);
-            }
-        }
-        bail!("No device found with name `{}`", name);
-    }
-
-    fn obtain_device_list() -> Result<Vec<DeviceInfo>> {
-        let mut devices = vec![];
-        for entry in std::fs::read_dir("/dev/input")? {
-            let entry = entry?;
-
-            if !entry
-                .file_name()
-                .to_str()
-                .unwrap_or("")
-                .starts_with("event")
-            {
-                continue;
-            }
-            let path = entry.path();
-            if path.is_dir() {
-                continue;
-            }
-
-            match DeviceInfo::with_path(path) {
-                Ok(item) => devices.push(item),
-                Err(err) => log::error!("{}", err),
-            }
-        }
-
-        devices.sort_by(|a, b| a.name.cmp(&b.name));
-        Ok(devices)
-    }
-}
-
-fn list_devices() -> Result<()> {
-    let devices = DeviceInfo::obtain_device_list()?;
-    for item in &devices {
-        println!("Name: {}", item.name);
-        println!("Path: {}", item.path.display());
-        println!();
-    }
-    Ok(())
-}
-
 fn main() -> Result<()> {
     pretty_env_logger::init();
     let opt = Opt::from_args();
 
     if opt.list_devices {
-        return list_devices();
+        return deviceinfo::list_devices();
     }
 
     let mappings = vec![
@@ -486,7 +419,7 @@ fn main() -> Result<()> {
     log::error!("Short delay: release any keys now!");
     std::thread::sleep(Duration::new(2, 0));
 
-    let device_info = DeviceInfo::with_name("AT Translated Set 2 keyboard")?;
+    let device_info = deviceinfo::DeviceInfo::with_name("AT Translated Set 2 keyboard")?;
 
     let mut mapper = InputMapper::create_mapper(device_info.path, mappings)?;
 
@@ -496,7 +429,7 @@ fn main() -> Result<()> {
             .input
             .next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)?;
         match status {
-            evdev::ReadStatus::Success => {
+            evdev_rs::ReadStatus::Success => {
                 if let EventCode::EV_KEY(ref key) = event.event_code {
                     log::trace!("IN {:?}", event);
                     mapper.update_with_event(&event, key.clone())?;
@@ -505,7 +438,7 @@ fn main() -> Result<()> {
                     mapper.output.write_event(&event)?;
                 }
             }
-            evdev::ReadStatus::Sync => bail!("ReadStatus::Sync!"),
+            evdev_rs::ReadStatus::Sync => bail!("ReadStatus::Sync!"),
         }
     }
 }
