@@ -10,6 +10,20 @@ tap = ["KEY_ESC"]
 
 # Function keys are remapped to alternate functions by
 # default, so arrange for ALT-FX to produce FX instead.
+# First, let's preserve the ability to switch virtual
+# terminal consoles for the first three slots
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_LEFTCTRL", "KEY_F1"]
+output = ["KEY_LEFTALT", "KEY_LEFTCTRL", "KEY_F1"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_LEFTCTRL", "KEY_F2"]
+output = ["KEY_LEFTALT", "KEY_LEFTCTRL", "KEY_F2"]
+
+[[remap]]
+input = ["KEY_LEFTALT", "KEY_LEFTCTRL", "KEY_F3"]
+output = ["KEY_LEFTALT", "KEY_LEFTCTRL", "KEY_F3"]
+
 [[remap]]
 input = ["KEY_LEFTALT", "KEY_F1"]
 output = ["KEY_F1"]
