@@ -3,8 +3,23 @@ use evdev::enums::{EventCode, EV_KEY as KeyCode};
 use evdev::{Device, GrabMode, InputEvent, ReadFlag, TimeVal, UInputDevice};
 use evdev_rs as evdev;
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
+use structopt::StructOpt;
+
+#[derive(Debug, StructOpt)]
+#[structopt(
+    name = "evremap",
+    about = "Remap libinput evdev keyboard inputs",
+    author = "Wez Furlong"
+)]
+struct Opt {
+    /// Rather than running the remapper, list currently available devices.
+    /// This is helpful to check their names when setting up the initial
+    /// configuration
+    #[structopt(name = "list-devices", long)]
+    list_devices: bool,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum Mapping {
@@ -368,8 +383,81 @@ fn make_event(key: KeyCode, time: &TimeVal, event_type: KeyEventType) -> InputEv
     InputEvent::new(time, &EventCode::EV_KEY(key), event_type.value())
 }
 
+struct DeviceInfo {
+    name: String,
+    path: PathBuf,
+}
+
+impl DeviceInfo {
+    pub fn with_path(path: PathBuf) -> Result<Self> {
+        let f = std::fs::File::open(&path).context(format!("opening {}", path.display()))?;
+        let mut input = Device::new().ok_or_else(|| anyhow!("failed to make new Device"))?;
+        input
+            .set_fd(f)
+            .context(format!("assigning fd for {} to Device", path.display()))?;
+
+        Ok(Self {
+            name: input.name().unwrap_or("").to_string(),
+            path,
+        })
+    }
+
+    pub fn with_name(name: &str) -> Result<Self> {
+        let devices = Self::obtain_device_list()?;
+        for item in devices {
+            if item.name == name {
+                return Ok(item);
+            }
+        }
+        bail!("No device found with name `{}`", name);
+    }
+
+    fn obtain_device_list() -> Result<Vec<DeviceInfo>> {
+        let mut devices = vec![];
+        for entry in std::fs::read_dir("/dev/input")? {
+            let entry = entry?;
+
+            if !entry
+                .file_name()
+                .to_str()
+                .unwrap_or("")
+                .starts_with("event")
+            {
+                continue;
+            }
+            let path = entry.path();
+            if path.is_dir() {
+                continue;
+            }
+
+            match DeviceInfo::with_path(path) {
+                Ok(item) => devices.push(item),
+                Err(err) => log::error!("{}", err),
+            }
+        }
+
+        devices.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(devices)
+    }
+}
+
+fn list_devices() -> Result<()> {
+    let devices = DeviceInfo::obtain_device_list()?;
+    for item in &devices {
+        println!("Name: {}", item.name);
+        println!("Path: {}", item.path.display());
+        println!();
+    }
+    Ok(())
+}
+
 fn main() -> Result<()> {
     pretty_env_logger::init();
+    let opt = Opt::from_args();
+
+    if opt.list_devices {
+        return list_devices();
+    }
 
     let mappings = vec![
         Mapping::DualRole {
@@ -398,9 +486,9 @@ fn main() -> Result<()> {
     log::error!("Short delay: release any keys now!");
     std::thread::sleep(Duration::new(2, 0));
 
-    let path = "/dev/input/event2";
+    let device_info = DeviceInfo::with_name("AT Translated Set 2 keyboard")?;
 
-    let mut mapper = InputMapper::create_mapper(path, mappings)?;
+    let mut mapper = InputMapper::create_mapper(device_info.path, mappings)?;
 
     log::error!("Going into read loop");
     loop {
