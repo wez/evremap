@@ -1,6 +1,11 @@
 use anyhow::*;
 use evdev_rs::Device;
+use std::cmp::Ordering;
+use std::num::ParseIntError;
 use std::path::PathBuf;
+use thiserror::Error;
+
+const EVENTNAME: &str = "event";
 
 #[derive(Debug, Clone)]
 pub struct DeviceInfo {
@@ -41,7 +46,7 @@ impl DeviceInfo {
                 .file_name()
                 .to_str()
                 .unwrap_or("")
-                .starts_with("event")
+                .starts_with(EVENTNAME)
             {
                 continue;
             }
@@ -56,7 +61,11 @@ impl DeviceInfo {
             }
         }
 
-        devices.sort_by(|a, b| a.name.cmp(&b.name));
+        devices.sort_by(|a, b| match a.name.cmp(&b.name) {
+            // If there are two equal names, sort by event number
+            Ordering::Equal => compare_by_event_number(&a.path, &b.path),
+            grater_or_less => grater_or_less,
+        });
         Ok(devices)
     }
 }
@@ -69,4 +78,40 @@ pub fn list_devices() -> Result<()> {
         println!();
     }
     Ok(())
+}
+
+// Compare two PathBuf, which should be `/dev/input/eventX` by number X following after `event` string
+// If any errors occures, return Ordering::Equal to save order, which would be without comparing by path
+fn compare_by_event_number(left: &PathBuf, right: &PathBuf) -> Ordering {
+    let left_number = match path_string_to_event_number(left.to_str().unwrap_or_default()) {
+        Ok(order) => order,
+        Err(_) => return Ordering::Equal,
+    };
+
+    let right_number = match path_string_to_event_number(right.to_str().unwrap_or_default()) {
+        Ok(order) => order,
+        Err(_) => return Ordering::Equal,
+    };
+
+    left_number.cmp(&right_number)
+}
+
+#[derive(Error, Debug)]
+enum ComaprationError {
+    #[error("`{0}` does not have 'event' name")]
+    NoEventName(String),
+    #[error("can not parse event number `{0}` for path `{1}`")]
+    ParseEventNumber(ParseIntError, String),
+}
+
+fn path_string_to_event_number(path: &str) -> Result<u32, ComaprationError> {
+    let index = match path.rfind(EVENTNAME) {
+        Some(index) => index,
+        None => return Err(ComaprationError::NoEventName(String::from(path))),
+    };
+    let string_number: String = path.chars().skip(index + EVENTNAME.len()).collect();
+
+    string_number
+        .parse::<u32>()
+        .map_err(|error| ComaprationError::ParseEventNumber(error, String::from(path)))
 }
