@@ -49,8 +49,18 @@ pub fn list_keys() -> Result<()> {
     Ok(())
 }
 
+fn setup_logger() {
+    let mut builder = pretty_env_logger::formatted_timed_builder();
+    if let Ok(s) = std::env::var("EVREMAP_LOG") {
+        builder.parse_filters(&s);
+    } else {
+        builder.filter(None, log::LevelFilter::Info);
+    }
+    builder.init();
+}
+
 fn main() -> Result<()> {
-    pretty_env_logger::init();
+    setup_logger();
     let opt = Opt::from_args();
 
     match opt {
@@ -65,7 +75,10 @@ fn main() -> Result<()> {
             log::error!("Short delay: release any keys now!");
             std::thread::sleep(Duration::new(2, 0));
 
-            let device_info = deviceinfo::DeviceInfo::with_name(&mapping_config.device_name)?;
+            let device_info = deviceinfo::DeviceInfo::with_name(
+                &mapping_config.device_name,
+                mapping_config.phys.as_deref(),
+            )?;
 
             let mut mapper = InputMapper::create_mapper(device_info.path, mapping_config.mappings)?;
             mapper.run_mapper()

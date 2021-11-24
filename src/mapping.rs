@@ -8,6 +8,7 @@ use thiserror::Error;
 #[derive(Debug, Clone)]
 pub struct MappingConfig {
     pub device_name: String,
+    pub phys: Option<String>,
     pub mappings: Vec<Mapping>,
 }
 
@@ -27,6 +28,7 @@ impl MappingConfig {
         }
         Ok(Self {
             device_name: config_file.device_name,
+            phys: config_file.phys,
             mappings,
         })
     }
@@ -113,6 +115,8 @@ impl Into<Mapping> for RemapConfig {
 #[derive(Debug, Deserialize)]
 struct ConfigFile {
     device_name: String,
+    #[serde(default)]
+    phys: Option<String>,
 
     #[serde(default)]
     dual_role: Vec<DualRoleConfig>,

@@ -29,6 +29,10 @@ Here's an example configuration that makes capslock useful:
 # on your system.
 device_name = "AT Translated Set 2 keyboard"
 
+# If you have multiple devices with the same name, you can optionally
+# specify the `phys` value that is printed by the `list-devices` subcommand
+# phys = "usb-0000:07:00.3-2.1.1/input0"
+
 # Configure CAPSLOCK as a Dual Role key.
 # Holding it produces LEFTCTRL, but tapping it
 # will produce ESC.
