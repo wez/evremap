@@ -45,7 +45,7 @@ tap = ["KEY_ESC"]
 
 You can also express simple remapping entries:
 
-```
+```toml
 # This config snippet is useful if your keyboard has an arrow
 # cluster, but doesn't have page up, page down, home or end
 # keys.  Here we're configuring ALT+arrow to map to those functions.
@@ -77,7 +77,7 @@ the function key row has alternate functions on the keycaps.  It is natural
 to want the mute button to mute by default, but to emit the F8 key when
 holding alt.  We can express that with the following configuration:
 
-```
+```toml
 [[remap]]
 input = ["KEY_LEFTALT", "KEY_F8"]
 # When our `input` is matched, our list of `output` is prevented from
@@ -97,7 +97,7 @@ output = ["KEY_MUTE"]
 
 ## Building it
 
-```
+```console
 $ sudo dnf install libevdev-devel
 $ cargo build --release
 ```
@@ -106,8 +106,8 @@ $ cargo build --release
 
 To run the remapper, invoke it *as root* (so that it can grab exclusive access to the input device):
 
-```
-sudo target/release/evremap remap my-config-file.toml
+```console
+$ sudo target/release/evremap remap my-config-file.toml
 ```
 
 ## Systemd
@@ -115,7 +115,7 @@ sudo target/release/evremap remap my-config-file.toml
 A sample system service unit is included in the repo.  You'll want to adjust the paths to match
 your system and then install and enable it:
 
-```
+```console
 $ sudo cp evremap.service /usr/lib/systemd/system/
 $ sudo systemctl daemon-reload
 $ sudo systemctl enable evremap.service
