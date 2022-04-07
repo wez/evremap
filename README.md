@@ -110,6 +110,19 @@ To run the remapper, invoke it *as root* (so that it can grab exclusive access t
 $ sudo target/release/evremap remap my-config-file.toml
 ```
 
+Or, grant an unprivileged user access to `evdev` and `uinput`.
+On Ubuntu, this can be configured by running the following commands and rebooting:
+
+```
+sudo gpasswd -a YOUR_USER input
+echo 'KERNEL=="uinput", GROUP="input"' | sudo tee /etc/udev/rules.d/input.rules
+```
+
+For some platforms, you might need to create an `input` group first and run:
+```
+echo 'KERNEL=="event*", NAME="input/%k", MODE="660", GROUP="input"' | sudo tee /etc/udev/rules.d/input.rules as well.
+```
+
 ## Systemd
 
 A sample system service unit is included in the repo.  You'll want to adjust the paths to match
@@ -124,5 +137,4 @@ $ sudo systemctl start evremap.service
 
 ## How do I make this execute a command when a key is pressed?
 
-Since the remapper runs as root, it seems like a dangerous idea to have it
-directly trigger commands, so that feature is not implemented.
+That feature is not implemented.
