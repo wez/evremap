@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Deps
+      run: "sudo -n apt-get install -y libevdev-dev"
     - name: Build
       run: cargo build --verbose
     - name: Run tests
