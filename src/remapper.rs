@@ -35,7 +35,7 @@ impl KeyEventType {
 }
 
 fn timeval_diff(newer: &TimeVal, older: &TimeVal) -> Duration {
-    const MICROS_PER_SECOND: i64 = 1000000;
+    const MICROS_PER_SECOND: libc::time_t = 1000000;
     let secs = newer.tv_sec - older.tv_sec;
     let usecs = newer.tv_usec - older.tv_usec;
 
