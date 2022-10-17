@@ -1,6 +1,6 @@
 use crate::mapping::*;
 use crate::remapper::*;
-use anyhow::*;
+use anyhow::{Context, Result};
 use std::path::PathBuf;
 use std::time::Duration;
 use structopt::StructOpt;

@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::{anyhow, bail, Context, Result};
 use evdev_rs::Device;
 use std::cmp::Ordering;
 use std::path::PathBuf;
