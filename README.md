@@ -120,8 +120,9 @@ echo 'KERNEL=="uinput", GROUP="input"' | sudo tee /etc/udev/rules.d/input.rules
 
 For some platforms, you might need to create an `input` group first and run:
 ```
-echo 'KERNEL=="event*", NAME="input/%k", MODE="660", GROUP="input"' | sudo tee /etc/udev/rules.d/input.rules as well.
+echo 'KERNEL=="event*", NAME="input/%k", MODE="660", GROUP="input"' | sudo tee /etc/udev/rules.d/input.rules
 ```
+as well.
 
 ## Systemd
 
