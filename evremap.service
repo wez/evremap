@@ -7,5 +7,5 @@ ExecStart=bash -c "/usr/bin/evremap remap /etc/evremap.toml"
 Restart=always
 
 [Install]
-WantedBy=gdm.service
+WantedBy=multi-user.target
 
