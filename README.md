@@ -98,7 +98,10 @@ output = ["KEY_MUTE"]
 ## Building it
 
 ```console
-$ sudo dnf install libevdev-devel
+$ sudo dnf install libevdev-devel # redhat/centos
+## or
+$ sudo apt install libevdev-dev # debian/ubuntu
+
 $ cargo build --release
 ```
 
