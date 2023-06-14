@@ -139,6 +139,32 @@ $ sudo systemctl enable evremap.service
 $ sudo systemctl start evremap.service
 ```
 
+## Runit
+
+If you're using Runit instead of Systemd, follow these steps to create a service.
+
+* Create a directory called `evremap` and create a file called `run` under it
+```console
+sudo mkdir /etc/sv/evremap
+sudo touch /etc/sv/evremap/run
+```
+
+* Copy these lines into the run file
+```console
+#!/bin/sh
+set -e 
+exec <PATH_TO_EVREMAP> remap <CONFIG>
+```
+
+Replace `<PATH_TO_EVREMAP>` with the path to your evremap executable and `<CONFIG>` with the path 
+to your configuration file
+
+* Finally, symlink the evremap directory to `/var/service`
+```console
+sudo ln -s /etc/sv/evremap /var/service
+```
+
+
 ## How do I make this execute a command when a key is pressed?
 
 That feature is not implemented.
