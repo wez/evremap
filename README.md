@@ -156,14 +156,44 @@ set -e
 exec <PATH_TO_EVREMAP> remap <CONFIG>
 ```
 
-Replace `<PATH_TO_EVREMAP>` with the path to your evremap executable and `<CONFIG>` with the path 
-to your configuration file
+Replace `<PATH_TO_EVREMAP>` with the path to your evremap executable and `<CONFIG>` with the path to your configuration file.
 
 * Finally, symlink the evremap directory to `/var/service`
 ```console
 sudo ln -s /etc/sv/evremap /var/service
 ```
 
+## OpenRC
+
+To make an OpenRC service, create the file `/etc/init.d/evremap` with the following contents...
+
+```console
+#!/usr/bin/openrc-run
+
+supervisor=supervise-daemon
+command="<PATH_TO_EVREMAP>"
+command_args="remap <CONFIG>"
+```
+
+Replace `<PATH_TO_EVREMAP>` with the path to your evremap executable and `<CONFIG>` with the path to your configuration file.
+
+Make the file executable...
+
+```console
+chmod +x /etc/init.d/evremap
+```
+
+Enable the service with...
+
+```console
+rc-update add evremap
+```
+
+Start the service with...
+
+```console
+rc-service evremap start
+```
 
 ## How do I make this execute a command when a key is pressed?
 
