@@ -72,7 +72,7 @@ fn main() -> Result<()> {
                 config_file.display()
             ))?;
 
-            log::error!("Short delay: release any keys now!");
+            log::warn!("Short delay: release any keys now!");
             std::thread::sleep(Duration::new(2, 0));
 
             let device_info = deviceinfo::DeviceInfo::with_name(
