@@ -118,7 +118,7 @@ impl InputMapper {
     }
 
     pub fn run_mapper(&mut self) -> Result<()> {
-        log::error!("Going into read loop");
+        log::info!("Going into read loop");
         loop {
             let (status, event) = self
                 .input
