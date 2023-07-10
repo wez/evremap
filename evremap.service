@@ -3,7 +3,7 @@ WorkingDirectory=/
 # For reasons I don't care to troubleshoot, Fedora 31 won't let me start this
 # unless I use `bash -c` around it.  Putting the command line in directly
 # yields a 203 permission denied error with no logs about what it didn't like.
-ExecStart=bash -c "/usr/bin/evremap remap /etc/evremap.toml"
+ExecStart=bash -c "/usr/bin/evremap remap /etc/evremap.toml -d 0"
 Restart=always
 
 [Install]

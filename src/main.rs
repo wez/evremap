@@ -31,6 +31,10 @@ enum Opt {
         /// Specify the configuration file to be loaded
         #[structopt(name = "CONFIG-FILE")]
         config_file: PathBuf,
+
+        /// Number of seconds for user to release keys on startup
+        #[structopt(short, long, default_value = "2")]
+        delay: f64,
     },
 }
 
@@ -66,14 +70,14 @@ fn main() -> Result<()> {
     match opt {
         Opt::ListDevices => deviceinfo::list_devices(),
         Opt::ListKeys => list_keys(),
-        Opt::Remap { config_file } => {
+        Opt::Remap { config_file, delay } => {
             let mapping_config = MappingConfig::from_file(&config_file).context(format!(
                 "loading MappingConfig from {}",
                 config_file.display()
             ))?;
 
             log::warn!("Short delay: release any keys now!");
-            std::thread::sleep(Duration::new(2, 0));
+            std::thread::sleep(Duration::from_secs_f64(delay));
 
             let device_info = deviceinfo::DeviceInfo::with_name(
                 &mapping_config.device_name,
