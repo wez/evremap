@@ -1,7 +1,6 @@
 use crate::mapping::*;
 use crate::remapper::*;
 use anyhow::{Context, Result};
-use float_duration::FloatDuration;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
