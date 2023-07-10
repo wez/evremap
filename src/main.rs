@@ -77,11 +77,7 @@ fn main() -> Result<()> {
             ))?;
 
             log::error!("Short delay: release any keys now!");
-            let float_delay_result = FloatDuration::seconds(delay).to_std();
-            match float_delay_result {
-                Ok(v) => std::thread::sleep(v),
-                Err(e) => log::error!("Invalid delay: {e:?}"),
-            }
+            std::thread::sleep(Duration::from_secs_f64(delay));
 
             let device_info = deviceinfo::DeviceInfo::with_name(
                 &mapping_config.device_name,
