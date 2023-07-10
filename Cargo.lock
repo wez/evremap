@@ -36,12 +36,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98161a4e3e2184da77bb14f02184cdd111e83bbbcc9979dfee3c44b9a85f5602"
 
 [[package]]
-name = "approx"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08abcc3b4e9339e33a3d0a5ed15d84a687350c05689d825e0f6655eef9e76a94"
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -221,7 +215,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "evdev-rs",
- "float_duration",
  "libc",
  "log",
  "pretty_env_logger",
@@ -229,18 +222,6 @@ dependencies = [
  "structopt",
  "thiserror",
  "toml",
-]
-
-[[package]]
-name = "float_duration"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4aed8e3182af8f7f1227d88fe6203a83e7a0cff36a8f0af7195f11449217480e"
-dependencies = [
- "approx",
- "chrono",
- "serde",
- "time",
 ]
 
 [[package]]

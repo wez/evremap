@@ -2,6 +2,7 @@ use crate::mapping::*;
 use crate::remapper::*;
 use anyhow::{Context, Result};
 use std::path::PathBuf;
+use std::time::Duration;
 use structopt::StructOpt;
 
 mod deviceinfo;
@@ -75,7 +76,7 @@ fn main() -> Result<()> {
                 config_file.display()
             ))?;
 
-            log::error!("Short delay: release any keys now!");
+            log::warn!("Short delay: release any keys now!");
             std::thread::sleep(Duration::from_secs_f64(delay));
 
             let device_info = deviceinfo::DeviceInfo::with_name(
