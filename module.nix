@@ -2,7 +2,7 @@
 
 let
   cfg = config.services.evremap;
-  evremapPkg = import ./default.nix {};
+  evremapPkg = import ./default.nix { inherit pkgs };
 
   tomlFormat = pkgs.formats.toml { };
   evremapConfig = tomlFormat.generate "evremap.toml" cfg.settings;
