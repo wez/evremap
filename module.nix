@@ -2,7 +2,7 @@
 
 let
   cfg = config.services.evremap;
-  evremapPkg = import ./default.nix { inherit pkgs };
+  evremapPkg = import ./default.nix { inherit pkgs; };
 
   tomlFormat = pkgs.formats.toml { };
   evremapConfig = tomlFormat.generate "evremap.toml" cfg.settings;
@@ -11,15 +11,16 @@ in
 with lib;
 
 {
+  nixpkgs.config.packageOverrides = pkgs: {
+    evremap = evremapPkg;
+  };
+
   options = {
     services.evremap = {
-      enable = mkOption {
-        default = false;
-        type = with types; bool;
-        description = ''
-          Enable evremap service
-        '';
-      };
+      enable = mkEnableOption "evremap";
+
+      package = mkPackageOption pkgs ["evremap" "evremap"] { };
+
       settings = mkOption {
         default = {};
         type = with types; attrs;
@@ -35,7 +36,7 @@ with lib;
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
         WorkingDirectory = "/";
-        ExecStart = "${evremapPkg}/bin/evremap remap ${evremapConfig}";
+        ExecStart = "${pkgs.evremap.evremap}/bin/evremap remap ${evremapConfig}";
         Restart = "always";
       };
     };
