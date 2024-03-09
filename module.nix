@@ -1,11 +1,11 @@
 { config, pkgs, lib, ... }:
 
 let
-  ev = config.services.evremap;
+  cfg = config.services.evremap;
   evremapPkg = import ./default.nix {};
 
   tomlFormat = pkgs.formats.toml { };
-  evremapConfig = tomlFormat.generate "evremap.toml" ev.settings;
+  evremapConfig = tomlFormat.generate "evremap.toml" cfg.settings;
 in 
 
 with lib;
@@ -22,15 +22,15 @@ with lib;
       };
       settings = mkOption {
         default = {};
-        type = with types; set;
+        type = with types; attrs;
         description = ''
-          Evremap settings
+          Evremap settings converted to TOML file
         '';
       };
     };
   };
 
-  config = mkIf ev.enable {
+  config = mkIf cfg.enable {
     systemd.services.evremap = {
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
