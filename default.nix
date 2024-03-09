@@ -7,19 +7,13 @@ pkgs.rustPlatform.buildRustPackage rec {
   src = pkgs.lib.cleanSource ./.;
   cargoLock.lockFile = ./Cargo.lock;
 
-  buildInputs = with pkgs; [
-    rustup
-  ];
-  propagatedBuildInputs = with pkgs; [
+  nativeBuildInputs = with pkgs; [
     libevdev
+    pkg-config
   ];
 
-  phases = "installPhase";
-
-  installPhase = ''
-mkdir -p $out/bin
-cp $src/target/release/evremap $out/bin/evremap
-  '';
+  cargoHash = pkgs.lib.fakeHash;
+  cargoBuildFlags = [ "--release" "--all-features" ];
 
   RUSTUP_TOOLCHAIN = "stable";
   PKG_CONFIG_PATH = "${pkgs.libevdev}/lib/pkgconfig";
