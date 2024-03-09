@@ -195,7 +195,7 @@ Start the service with...
 rc-service evremap start
 ```
 
-## NixOs
+## NixOS
 
 To install and enable evremap service in nixos, you have to use flakes in your configuration.nix
 
