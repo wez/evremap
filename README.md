@@ -195,6 +195,58 @@ Start the service with...
 rc-service evremap start
 ```
 
+## NixOS
+
+To install and enable evremap service in nixos, you have to use flakes in your configuration.nix
+
+```nix
+{
+  inputs = {
+    evremap.url = "github:avrahambenaram/evremap";
+    # ... Other inputs
+  };
+  outputs = { self, nixpkgs, evremap, ... } @ inputs:
+  {
+    nixosConfigurations."hostname" = nixpkgs.lib.nixosSystem {
+      specialArgs = inputs;
+      modules = [
+        evremap.nixosModules.default
+        ./configuration.nix
+      ];
+    };
+  }
+}
+```
+
+Then, just setup the service in configuration.nix
+
+```nix
+{
+  services.evremap = {
+    enable = true;
+    # Optional: sets a custom evremap package. Defaults to pkgs.evremap
+    # package = pkgs.evremap;
+    settings = {
+      device_name = "AT Translated Set 2 keyboard";
+      dual_role = [
+        {
+          input = "KEY_LEFTCTRL";
+          tap = ["KEY_CAPSLOCK"];
+          hold = ["KEY_CAPSLOCK"];
+        }
+        {
+          input = "KEY_CAPSLOCK";
+          tap = ["KEY_ESC"];
+          hold = ["KEY_LEFTCTRL"];
+        }
+      ];
+      # Others evremap rules
+    };
+  };
+}
+```
+
+
 ## How do I make this execute a command when a key is pressed?
 
 That feature is not implemented.
