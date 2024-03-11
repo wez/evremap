@@ -8,7 +8,7 @@
     forAllSystems = nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
   in
   {
-    nixosModules.default = import ./module.nix;
+    nixosModules.default = import ./nix/module.nix;
     packages = forAllSystems (system:
     let
       pkgs = import nixpkgs { inherit system; };
