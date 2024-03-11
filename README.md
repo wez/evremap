@@ -224,6 +224,8 @@ Then, just setup the service in configuration.nix
 {
   services.evremap = {
     enable = true;
+    # Optional: sets a custom evremap package. Defaults to pkgs.evremap
+    # package = pkgs.evremap;
     settings = {
       device_name = "AT Translated Set 2 keyboard";
       dual_role = [
