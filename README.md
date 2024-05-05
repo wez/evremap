@@ -100,7 +100,7 @@ output = ["KEY_MUTE"]
 ```console
 $ sudo dnf install libevdev-devel # redhat/centos
 ## or
-$ sudo apt install libevdev-dev # debian/ubuntu
+$ sudo apt install libevdev-dev pkg-config # debian/ubuntu
 
 $ cargo build --release
 ```
