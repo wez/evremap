@@ -1,0 +1,56 @@
+device_name = "Kingsis Peripherals Evoluent VerticalMouse 4"
+
+# Order of mappings is important.
+
+################################################################################
+# Secondary functions, enabled by holding Button 6.
+################################################################################
+
+# Button 6 + Button 1 => Copy.
+[[remap]]
+input = ["BTN_FORWARD", "BTN_LEFT"]
+output = ["KEY_COPY"]
+
+# Button 6 + Button 2 => Paste.
+[[remap]]
+input = ["BTN_FORWARD", "BTN_MIDDLE"]
+output = ["KEY_PASTE"]
+
+# Button 6 + Button 3 => Ctrl + W.
+# KEY_Z is used instead of KEY_W, because my keyboard layout is AZERTY.
+[[remap]]
+input = ["BTN_FORWARD", "BTN_RIGHT"]
+output = ["KEY_LEFTCTRL", "KEY_Z"]
+
+# Button 6 => Disabled.
+# This is done to avoid confusion, because it is dedicated to enable
+# secondary functions.
+[[remap]]
+input = ["BTN_FORWARD"]
+output = []
+
+################################################################################
+# Primary functions.
+################################################################################
+
+# The middle finger => Right click.
+# Just like on a horizontal mouse.
+[[remap]]
+input = ["BTN_MIDDLE"]
+output = ["BTN_RIGHT"]
+
+# Button 3 => Escape.
+[[remap]]
+input = ["BTN_RIGHT"]
+output = ["KEY_ESC"]
+
+# The wheel button => Middle click.
+# Just like on a horizontal mouse.
+[[remap]]
+input = ["BTN_EXTRA"]
+output = ["BTN_MIDDLE"]
+
+# Button 5 => Enter.
+[[remap]]
+input = ["BTN_SIDE"]
+output = ["KEY_ENTER"]
