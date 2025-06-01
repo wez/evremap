@@ -1,0 +1,71 @@
+name: Create Releases And Publish
+
+on:
+  push:
+    branches:
+      - 'workflow'
+  workflow_dispatch:
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Rust setup
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install Linux Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libevdev-dev pkg-config
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Build x86_64-unknown-linux-gnu
+        run: cargo build --verbose --release --target x86_64-unknown-linux-gnu
+
+      - name: Build aarch64-unknown-linux-gnu
+        run: |
+          sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
+          cargo build --verbose --release --target aarch64-unknown-linux-gnu --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"
+
+      - name: Create GitHub release
+        id: create-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: 'v0.0.1-pre-${{ github.sha }}'
+          release_name: Pre-Release v0.0.1
+          body: ''
+          draft: false
+          prerelease: true
+
+      - name: Upload binary to GitHub release
+        id: upload-x86_64-unknown-linux-gnu-release-asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: target/x86_64-unknown-linux-gnu/release/evremap
+          asset_name: evremap-x86_64-unknown-linux-gnu
+          asset_content_type: application/raw
+
+      - name: Upload aarch64 linux binary to GitHub release
+        id: upload-aarch64-unknown-linux-gnu-release-asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: target/aarch64-unknown-linux-gnu/release/evremap
+          asset_name: evremap-aarch64-unknown-linux-gnu
+          asset_content_type: application/raw
