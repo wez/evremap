@@ -33,6 +33,9 @@ device_name = "AT Translated Set 2 keyboard"
 # specify the `phys` value that is printed by the `list-devices` subcommand
 # phys = "usb-0000:07:00.3-2.1.1/input0"
 
+# If you specify path, device_name and phys are ignored
+# path = "/dev/input/by-id/usb-SINO_WEALTH_Gaming_KB-event-kbd"
+
 # Configure CAPSLOCK as a Dual Role key.
 # Holding it produces LEFTCTRL, but tapping it
 # will produce ESC.

@@ -10,6 +10,7 @@ pub struct MappingConfig {
     pub device_name: Option<String>,
     pub phys: Option<String>,
     pub mappings: Vec<Mapping>,
+    pub path: Option<String>,
 }
 
 impl MappingConfig {
@@ -30,6 +31,7 @@ impl MappingConfig {
             device_name: config_file.device_name,
             phys: config_file.phys,
             mappings,
+            path: config_file.path,
         })
     }
 }
@@ -116,6 +118,9 @@ impl Into<Mapping> for RemapConfig {
 struct ConfigFile {
     #[serde(default)]
     device_name: Option<String>,
+
+    #[serde(default)]
+    path: Option<String>,
 
     #[serde(default)]
     phys: Option<String>,

@@ -1,6 +1,7 @@
 use crate::deviceinfo::DeviceInfo;
 use crate::mapping::*;
 use crate::remapper::*;
+use anyhow::Error;
 use anyhow::{Context, Result};
 use clap::Parser;
 use std::path::PathBuf;
@@ -27,12 +28,16 @@ enum Opt {
     DebugEvents {
         /// Specify the device name of interest
         #[arg(long)]
-        device_name: String,
+        device_name: Option<String>,
 
         /// Specify the phys device in case multiple devices have
         /// the same name
         #[arg(long)]
         phys: Option<String>,
+
+        /// Specify the path
+        #[arg(long)]
+        path: Option<String>,
     },
 
     /// Load a remapper config and run the remapper.
@@ -46,6 +51,10 @@ enum Opt {
         /// Number of seconds for user to release keys on startup
         #[arg(short, long, default_value = "2")]
         delay: f64,
+
+        /// Override the device path specified by the config file
+        #[arg(long)]
+        path: Option<String>,
 
         /// Override the device name specified by the config file
         #[arg(long)]
@@ -91,16 +100,29 @@ fn setup_logger() {
 }
 
 fn get_device(
-    device_name: &str,
+    path: Option<&str>,
+    name: Option<&str>,
     phys: Option<&str>,
     wait_for_device: bool,
 ) -> anyhow::Result<DeviceInfo> {
-    match deviceinfo::DeviceInfo::with_name(device_name, phys) {
-        Ok(dev) => return Ok(dev),
-        Err(err) if !wait_for_device => return Err(err),
-        Err(err) => {
-            log::warn!("{err:#}. Will wait until it is attached.");
+    if let Some(path) = path {
+        match deviceinfo::DeviceInfo::with_path(path.into()) {
+            Ok(dev) => return Ok(dev),
+            Err(err) if !wait_for_device => return Err(err),
+            Err(err) => {
+                log::warn!("{err:#}. Will wait until it is attached.");
+            }
         }
+    } else if let Some(name) = name {
+        match deviceinfo::DeviceInfo::with_name(name, phys) {
+            Ok(dev) => return Ok(dev),
+            Err(err) if !wait_for_device => return Err(err),
+            Err(err) => {
+                log::warn!("{err:#}. Will wait until it is attached.");
+            }
+        }
+    } else {
+        return Err(Error::msg("device or path is required"));
     }
 
     const MAX_SLEEP: Duration = Duration::from_secs(10);
@@ -110,11 +132,19 @@ fn get_device(
     loop {
         std::thread::sleep(sleep);
         sleep = (sleep + ONE_SECOND).min(MAX_SLEEP);
-
-        match deviceinfo::DeviceInfo::with_name(device_name, phys) {
-            Ok(dev) => return Ok(dev),
-            Err(err) => {
-                log::debug!("{err:#}");
+        if let Some(path) = path {
+            match deviceinfo::DeviceInfo::with_path(path.into()) {
+                Ok(dev) => return Ok(dev),
+                Err(err) => {
+                    log::debug!("{err:#}");
+                }
+            }
+        } else if let Some(name) = name {
+            match deviceinfo::DeviceInfo::with_name(name, phys) {
+                Ok(dev) => return Ok(dev),
+                Err(err) => {
+                    log::debug!("{err:#}");
+                }
             }
         }
     }
@@ -151,11 +181,21 @@ fn main() -> Result<()> {
     match opt {
         Opt::ListDevices => deviceinfo::list_devices(),
         Opt::ListKeys => list_keys(),
-        Opt::DebugEvents { device_name, phys } => {
-            let device_info = get_device(&device_name, phys.as_deref(), false)?;
+        Opt::DebugEvents {
+            path,
+            device_name,
+            phys,
+        } => {
+            let device_info = get_device(
+                path.as_deref(),
+                device_name.as_deref(),
+                phys.as_deref(),
+                false,
+            )?;
             debug_events(device_info)
         }
         Opt::Remap {
+            path,
             config_file,
             delay,
             device_name,
@@ -173,20 +213,19 @@ fn main() -> Result<()> {
             if let Some(phys) = phys {
                 mapping_config.phys = Some(phys);
             }
-
-            let device_name = mapping_config.device_name.as_deref().ok_or_else(|| {
-                anyhow::anyhow!(
-                    "device_name is missing; \
-                        specify it either in the config file or via the --device-name \
-                        command line option"
-                )
-            })?;
+            if let Some(path) = path {
+                mapping_config.path = Some(path);
+            }
 
             log::warn!("Short delay: release any keys now!");
             std::thread::sleep(Duration::from_secs_f64(delay));
 
-            let device_info =
-                get_device(device_name, mapping_config.phys.as_deref(), wait_for_device)?;
+            let device_info = get_device(
+                mapping_config.path.as_deref(),
+                mapping_config.device_name.as_deref(),
+                mapping_config.phys.as_deref(),
+                wait_for_device,
+            )?;
 
             let mut mapper = InputMapper::create_mapper(device_info.path, mapping_config.mappings)?;
             mapper.run_mapper()
