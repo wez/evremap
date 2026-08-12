@@ -143,9 +143,11 @@ impl InputMapper {
 
         // First phase is to apply any DualRole mappings as they are likely to
         // be used to produce modifiers when held.
+        // If an input is still in the tapping state, it is treated as pending,
+        // so mappings are not applied.
         for map in &self.mappings {
             if let Mapping::DualRole { input, hold, .. } = map {
-                if keys.contains(input) {
+                if keys.contains(input) && self.tapping.as_ref() != Some(input) {
                     keys.remove(input);
                     for h in hold {
                         keys.insert(h.clone());
@@ -307,12 +309,10 @@ impl InputMapper {
                 self.input_state.insert(code.clone(), event.time.clone());
 
                 match self.lookup_mapping(code.clone()) {
-                    Some(_) => {
-                        self.compute_and_apply_keys(&event.time)?;
+                    Some(Mapping::DualRole { .. }) => {
                         self.tapping.replace(code);
                     }
-                    None => {
-                        // Just pass it through
+                    Some(Mapping::Remap { .. }) | None => {
                         self.cancel_pending_tap();
                         self.compute_and_apply_keys(&event.time)?;
                     }
@@ -320,8 +320,15 @@ impl InputMapper {
             }
             KeyEventType::Repeat => {
                 match self.lookup_mapping(code.clone()) {
-                    Some(Mapping::DualRole { hold, .. }) => {
-                        self.emit_keys(&hold, &event.time, KeyEventType::Repeat)?;
+                    Some(Mapping::DualRole { .. }) => {
+                        if let Some(pressed_at) = self.input_state.get(&code) {
+                            if timeval_diff(&event.time, &pressed_at) <= Duration::from_millis(200)
+                            {
+                                return Ok(());
+                            }
+                            self.cancel_pending_tap();
+                            self.compute_and_apply_keys(&event.time)?;
+                        }
                     }
                     Some(Mapping::Remap { output, .. }) => {
                         let output: Vec<KeyCode> = output.iter().cloned().collect();
