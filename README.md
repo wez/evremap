@@ -66,11 +66,28 @@ input = ["KEY_LEFTALT", "KEY_RIGHT"]
 output = ["KEY_END"]
 ```
 
+Relative axes can be configured as well:
+
+```toml
+# Remap vertical scroll to horizontal scroll.
+[[relative_axis]]
+input = "REL_WHEEL_HI_RES"
+output = "REL_HWHEEL_HI_RES"
+
+# Reverse horizontal scroll direction.
+# The `output` value defaults to the `input` axis.
+# Setting `invert = true` reverses the direction of reported movement.
+[[relative_axis]]
+input = "REL_HWHEEL_HI_RES"
+invert = true
+```
+
 When applying remapping configuration, ordering is important:
 
 * Dual Role entries are always processed first
 * Remap entries are applied in the order that they appear in
   your configuration file
+* Relative axis entries are also applied in the order that they appear
 
 Here's an example where ordering is important: on the PixelBook Go keyboard,
 the function key row has alternate functions on the keycaps.  It is natural
@@ -94,6 +111,9 @@ output = ["KEY_MUTE"]
 
 * How do I list available key codes?
   `evremap list-keys`
+
+* How do I list available relative axis codes?
+  `evremap list-relative-axes`
 
 * Is there a GUI for editing the config file?
   Yes, take a look at [Evremap-GUI](https://github.com/M8850/Evremap-GUI)

@@ -1,5 +1,5 @@
 use anyhow::Context;
-pub use evdev_rs::enums::{EventCode, EventType, EV_KEY as KeyCode};
+pub use evdev_rs::enums::{EventCode, EventType, EV_KEY as KeyCode, EV_REL as RelCode};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::path::Path;
@@ -26,6 +26,9 @@ impl MappingConfig {
         for remap in config_file.remap {
             mappings.push(remap.into());
         }
+        for relative_axis in config_file.relative_axis {
+            mappings.push(relative_axis.into());
+        }
         Ok(Self {
             device_name: config_file.device_name,
             phys: config_file.phys,
@@ -45,6 +48,11 @@ pub enum Mapping {
         input: HashSet<KeyCode>,
         output: HashSet<KeyCode>,
     },
+    RelativeAxis {
+        input: RelCode,
+        output: RelCode,
+        invert: bool,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,8 +71,14 @@ impl Into<KeyCode> for KeyCodeWrapper {
 pub enum ConfigError {
     #[error("Invalid key `{0}`.  Use `evremap list-keys` to see possible keys.")]
     InvalidKey(String),
+    #[error(
+        "Invalid relative axis `{0}`.  Use `evremap list-relative-axes` to see possible axes."
+    )]
+    InvalidRel(String),
     #[error("Impossible: parsed KEY_XXX but not into an EV_KEY")]
     ImpossibleParseKey,
+    #[error("Impossible: parsed REL_XXX but not into an EV_REL")]
+    ImpossibleParseRel,
 }
 
 impl std::convert::TryFrom<String> for KeyCodeWrapper {
@@ -76,6 +90,31 @@ impl std::convert::TryFrom<String> for KeyCodeWrapper {
                 _ => Err(ConfigError::ImpossibleParseKey),
             },
             None => Err(ConfigError::InvalidKey(s)),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(try_from = "String")]
+struct RelCodeWrapper {
+    pub code: RelCode,
+}
+
+impl Into<RelCode> for RelCodeWrapper {
+    fn into(self) -> RelCode {
+        self.code
+    }
+}
+
+impl std::convert::TryFrom<String> for RelCodeWrapper {
+    type Error = ConfigError;
+    fn try_from(s: String) -> Result<RelCodeWrapper, Self::Error> {
+        match EventCode::from_str(&EventType::EV_REL, &s) {
+            Some(code) => match code {
+                EventCode::EV_REL(code) => Ok(RelCodeWrapper { code }),
+                _ => Err(ConfigError::ImpossibleParseRel),
+            },
+            None => Err(ConfigError::InvalidRel(s)),
         }
     }
 }
@@ -93,6 +132,26 @@ impl Into<Mapping> for DualRoleConfig {
             input: self.input.into(),
             hold: self.hold.into_iter().map(Into::into).collect(),
             tap: self.tap.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct RelativeAxisConfig {
+    input: RelCodeWrapper,
+    output: Option<RelCodeWrapper>,
+    #[serde(default)]
+    invert: bool,
+}
+
+impl Into<Mapping> for RelativeAxisConfig {
+    fn into(self) -> Mapping {
+        let input: RelCode = self.input.into();
+        let output = self.output.map(Into::into).unwrap_or(input);
+        Mapping::RelativeAxis {
+            input,
+            output,
+            invert: self.invert,
         }
     }
 }
@@ -125,4 +184,7 @@ struct ConfigFile {
 
     #[serde(default)]
     remap: Vec<RemapConfig>,
+
+    #[serde(default)]
+    relative_axis: Vec<RelativeAxisConfig>,
 }

@@ -22,6 +22,9 @@ enum Opt {
     /// Show a list of possible KEY_XXX values
     ListKeys,
 
+    /// Show a list of possible REL_XXX values
+    ListRelativeAxes,
+
     /// Listen to events and print them out to facilitate learning
     /// which keys/buttons have which labels for your device(s)
     DebugEvents {
@@ -76,6 +79,21 @@ pub fn list_keys() -> Result<()> {
     keys.sort();
     for key in keys {
         println!("{}", key);
+    }
+    Ok(())
+}
+
+pub fn list_relative_axes() -> Result<()> {
+    let mut axes: Vec<String> = EventCode::EV_REL(RelCode::REL_X)
+        .iter()
+        .filter_map(|code| match code {
+            EventCode::EV_REL(_) => Some(format!("{}", code)),
+            _ => None,
+        })
+        .collect();
+    axes.sort();
+    for axis in axes {
+        println!("{}", axis);
     }
     Ok(())
 }
@@ -151,6 +169,7 @@ fn main() -> Result<()> {
     match opt {
         Opt::ListDevices => deviceinfo::list_devices(),
         Opt::ListKeys => list_keys(),
+        Opt::ListRelativeAxes => list_relative_axes(),
         Opt::DebugEvents { device_name, phys } => {
             let device_info = get_device(&device_name, phys.as_deref(), false)?;
             debug_events(device_info)

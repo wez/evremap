@@ -95,6 +95,11 @@ impl InputMapper {
                         enable_key_code(&mut input, o.clone())?;
                     }
                 }
+                Mapping::RelativeAxis { output, .. } => {
+                    input
+                        .enable(EventCode::EV_REL(output.clone()))
+                        .context(format!("enable relative axis {:?}", output))?;
+                }
             }
         }
 
@@ -122,15 +127,20 @@ impl InputMapper {
                 .input
                 .next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)?;
             match status {
-                evdev_rs::ReadStatus::Success => {
-                    if let EventCode::EV_KEY(ref key) = event.event_code {
+                evdev_rs::ReadStatus::Success => match event.event_code {
+                    EventCode::EV_KEY(ref key) => {
                         log::trace!("IN {:?}", event);
                         self.update_with_event(&event, key.clone())?;
-                    } else {
+                    }
+                    EventCode::EV_REL(ref axis) => {
+                        log::trace!("IN {:?}", event);
+                        self.update_with_relative_axis_event(&event, axis.clone())?;
+                    }
+                    _ => {
                         log::trace!("PASSTHRU {:?}", event);
                         self.output.write_event(&event)?;
                     }
-                }
+                },
                 evdev_rs::ReadStatus::Sync => bail!("ReadStatus::Sync!"),
             }
         }
@@ -260,6 +270,7 @@ impl InputMapper {
                         candidates.push(map);
                     }
                 }
+                Mapping::RelativeAxis { .. } => {}
             }
         }
 
@@ -327,7 +338,7 @@ impl InputMapper {
                         let output: Vec<KeyCode> = output.iter().cloned().collect();
                         self.emit_keys(&output, &event.time, KeyEventType::Repeat)?;
                     }
-                    None => {
+                    _ => {
                         // Just pass it through
                         self.cancel_pending_tap();
                         self.write_event_and_sync(event)?;
@@ -336,6 +347,24 @@ impl InputMapper {
             }
             KeyEventType::Unknown(_) => {
                 self.write_event_and_sync(event)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn update_with_relative_axis_event(&mut self, event: &InputEvent, code: RelCode) -> Result<()> {
+        match self.mappings.iter().find_map(|map| match *map {
+            Mapping::RelativeAxis { input, .. } if input == code => Some(map.clone()),
+            _ => None,
+        }) {
+            Some(Mapping::RelativeAxis { output, invert, .. }) => {
+                let value = if invert { -event.value } else { event.value };
+                let rel_event = &InputEvent::new(&event.time, &EventCode::EV_REL(output), value);
+                self.write_event(rel_event)?;
+            }
+            _ => {
+                self.write_event(event)?;
             }
         }
 
